@@ -6,9 +6,10 @@ from app.ingestion.document_loader import load_documents_from_folder
 from app.ingestion.ticket_loader import load_tickets_from_csv
 
 class KnowledgeBaseService:
-    def __init__(self, documents: list[Document], tickets: list[Ticket]):
+    def __init__(self, documents: list[Document], tickets: list[Ticket], crew_members: list[CrewMember]):
         self._documents = documents
         self._tickets = tickets
+        self._crew_members = crew_members
 
     def get_all_documents(self) -> list[Document]:
         return self._documents
@@ -35,6 +36,31 @@ class KnowledgeBaseService:
                 return ticket
         return None
 
+    def get_all_crew_members(self) -> list[CrewMember]:
+        return self._crew_members
+
+    def get_crew_member_by_id(self, id: int) -> CrewMember | None:
+        for crew_member in self._crew_members:
+            if crew_member.id == id:
+                return crew_member
+        return None
+
+    def get_station_mismatches(self) -> list[tuple[Ticket, Document, CrewMember, CrewMember]]:
+        mismatches: list[tuple[Ticket, Document, CrewMember, CrewMember]] = []
+        for ticket in self._tickets:
+            document = self.get_document_by_id(ticket.related_document_id)
+            assignee = self.get_crew_member_by_id(ticket.assignee_id)
+            if document is None or assignee is None:
+                continue
+
+            owner = self.get_crew_member_by_id(document.owner_id)
+            if owner is None:
+                continue
+
+            if assignee.station != owner.station:
+                mismatches.append((ticket, document, assignee, owner))
+        return mismatches
+
 def _seed_data():
     CrewMember(1, 'John D.', CrewStation.GRILL)
     CrewMember(2, 'Sal R.', CrewStation.GRILL)
@@ -47,4 +73,4 @@ def get_knowledge_base_service() -> KnowledgeBaseService:
     documents = load_documents_from_folder('docs')
     tickets = load_tickets_from_csv('tickets.csv')
     _seed_data()
-    return KnowledgeBaseService(documents, tickets)
+    return KnowledgeBaseService(Document.registry, Ticket.registry, CrewMember.registry)
