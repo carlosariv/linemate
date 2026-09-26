@@ -48,4 +48,27 @@ class MismatchOut(BaseModel):
     assignee_station: str
     owner_name: str
     owner_station: str
-    
+
+class StationWorkload(BaseModel):
+    station: str
+    open_ticket_count: int
+    load_score: float
+    load_share_pct: float
+    is_overloaded: float
+
+class WorkloadReport(BaseModel):
+    stations: list[StationWorkload]
+    total_open_tickets: int
+    mean_load_score: float
+    std_load_score: float
+
+class StationOwnership(BaseModel):
+    station: str
+    owned_document_count: int
+    stale_document_count: int
+    stale_share_pct: float
+    is_stale_risk: bool
+
+class OwnershipReport(BaseModel):
+    stations: list[StationOwnership]
+    total_documents: int

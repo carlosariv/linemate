@@ -1,9 +1,12 @@
 from functools import lru_cache
 
-from app.models.enums import TicketPriority, TicketStatus, CrewStation
+from app.models.enums import TicketPriority, TicketStatus, CrewStation, DocumentCategory
 from app.models import Document, Ticket, CrewMember
 from app.ingestion.document_loader import load_documents_from_folder
 from app.ingestion.ticket_loader import load_tickets_from_csv
+from app.api.schemas import WorkloadReport
+from app.analytics.workload import compute_station_workload
+from app.analytics.ownership import compute_document_ownership
 
 class KnowledgeBaseService:
     def __init__(self, documents: list[Document], tickets: list[Ticket], crew_members: list[CrewMember]):
@@ -23,7 +26,7 @@ class KnowledgeBaseService:
     def get_stale_documents(self) -> list[Document]:
         stale: list[Document] = []
         for document in self._documents:
-            if document.is_stale():
+            if document.category != DocumentCategory.INCIDENT_REPORT and document.is_stale():
                 stale.append(document)
         return stale
 
@@ -60,6 +63,13 @@ class KnowledgeBaseService:
             if assignee.station != owner.station:
                 mismatches.append((ticket, document, assignee, owner))
         return mismatches
+
+    def get_station_workload_report(self) -> dict:
+        return compute_station_workload(self._tickets, self._crew_members)
+
+    def get_document_ownership_report(self) -> dict:
+        return compute_document_ownership(self._documents, self._crew_members)
+
 
 def _seed_data():
     CrewMember(1, 'John D.', CrewStation.GRILL)
