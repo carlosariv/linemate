@@ -50,14 +50,18 @@ def get_ticket(
     service: KnowledgeBaseService = Depends(get_knowledge_base_service)
 ) -> TicketOut | None:
     ticket = service.get_ticket_by_id(ticket_id)
-    if ticket:
-        return TicketOut(
-            id = ticket.id,
-            title = ticket.title,
-            status = ticket.status,
-            priority = ticket.priority,
-            assignee_id = ticket.assignee_id,
-            related_document_id = ticket.related_document_id
+    if ticket is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No ticket with id {ticket_id}"
         )
-    return None
+
+    return TicketOut(
+        id = ticket.id,
+        title = ticket.title,
+        status = ticket.status,
+        priority = ticket.priority,
+        assignee_id = ticket.assignee_id,
+        related_document_id = ticket.related_document_id
+    )
 
