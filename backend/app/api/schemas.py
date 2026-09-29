@@ -72,3 +72,11 @@ class StationOwnership(BaseModel):
 class OwnershipReport(BaseModel):
     stations: list[StationOwnership]
     total_documents: int
+
+class AskRequest(BaseModel):
+    conversation_id: str
+    question: str
+
+class AskResponse(BaseModel):
+    answer: str
+    sources: list[str]
