@@ -23,6 +23,23 @@ _llm = ChatOllama(
 _rag_prompt = ChatPromptTemplate.from_messages([
     (
         "system",
+        "You are LineMate, an internal engineering assistant for a restaurant team."
+        "Answer the engineer's question using ONLY the context below - "
+        "do not use any outside knowledge, and do not invent details that"
+        "aren't in the context. If the context doesn't contain enough"
+        "information to answer the question, say so plainly instead of"
+        "guessing. \n\nContext:\n{context}",
+    ),
+    (
+        "human", "{question}",
+    )
+])
+
+rag_answer_chain = _rag_prompt | _llm | StrOutputParser()
+
+_rag_prompt_with_history = ChatPromptTemplate.from_messages([
+    (
+        "system",
         "You are LineMate, an internal engineering assistant for a restaurant team. "
         "Answer the engineer's question using ONLY the context below - "
         "do not use any outside knowledge, and do not invent details that "
@@ -34,7 +51,7 @@ _rag_prompt = ChatPromptTemplate.from_messages([
     ("human", "{question}")
 ])
 
-rag_answer_chain = _rag_prompt | _llm | StrOutputParser()
+rag_answer_chain_with_history = _rag_prompt_with_history | _llm | StrOutputParser()
 
 @dataclass
 class AskResult:
@@ -58,10 +75,24 @@ def _retrieve(input_dict: dict) -> list[LCDocument]:
     documents = retriever.invoke(input_dict["question"])
     return documents
 
+
+def answer_question(question: str, k: int = DEFAULT_K) -> AskResult:
+    """
+    The full RAG path: retreive, format, generate, cite. Always calls the llm,
+    even if the retrieved context turns out to be a weak match(because we are using
+    the get_similarity_retriever)
+    """
+    retriever = get_similarity_retriever(k=k)
+    documents = retriever.invoke(question)
+    context = format_retrieved_context(documents)
+    answer = rag_answer_chain.invoke({"context": context, "question": question})
+    return AskResult(answer=answer, sources=_citation_titles(documents))
+
+
 retrieval_chain = (
     RunnablePassthrough.assign(documents=_retrieve)
     | RunnablePassthrough.assign(context=lambda x: format_retrieved_context(x["documents"]))
-    | RunnablePassthrough.assign(answer=rag_answer_chain)
+    | RunnablePassthrough.assign(answer=rag_answer_chain_with_history)
 )
 
 @dataclass

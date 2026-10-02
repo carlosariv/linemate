@@ -74,6 +74,9 @@ class OwnershipReport(BaseModel):
     total_documents: int
 
 class AskRequest(BaseModel):
+    question: str
+
+class AskConversationRequest(BaseModel):
     conversation_id: str
     question: str
 
